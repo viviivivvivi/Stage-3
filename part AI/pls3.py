@@ -426,20 +426,7 @@ def main():
         
     server = FlaskServer(system)
     server.run()
-        
-    cap = cv2.VideoCapture(1)
-        
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-           break
-        result_frame, action_label, _ = system.process_frame(frame)
-        cv2.imshow("Activity Recognition", result_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
+    
 
 if __name__ == "__main__":
     main()
