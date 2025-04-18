@@ -120,10 +120,10 @@ class AlertService:
         self.esp32_ip = "192.168.100.77"
         
         #Twilio
-        self.twilio_sid = "oAC050bc8d5b85372bb9a6178bfd7f24d52"
-        self.twilio_token = "3fc8f71e039cfbf04cf0ae68faca5101"
-        self.twilio_from = "+19786969043"
-        self.twilio_to = "+628112444595"
+        self.twilio_sid = "TWILIO_SSID" #SSID is hidden
+        self.twilio_token = "TOKEN_NAME" #Token is hidden
+        self.twilio_from = "TWILIO_NUMBER" #twilio number is hidden
+        self.twilio_to = "MY_NUMBER" #my number is hidden
  
     def send_alert(self, alert_type, details=""):
         current_time = time.time()
