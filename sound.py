@@ -5,22 +5,22 @@ import time
 import urequests
 import _thread
 
-# Wi-Fi credentials
-ssid = 'WIFI GRATIS'
-password = 'gbu122333'
 
-# Hardware setup
+ssid = 'WIFI_NAME'
+password = 'WIFI_PASSWORD'
+#this names are temporary/nama wifi dan password tidak diperlihatkan
+
 led = Pin(2, Pin.OUT)       
 buzzer = PWM(Pin(15))
 buzzer.freq(900)
-buzzer.duty(0)  # Start with buzzer off
+buzzer.duty(0)  
 
-# Analog pin for sound sensor
+
 sound_sensor = ADC(Pin(32))  
-sound_sensor.atten(ADC.ATTN_11DB)  # 0 - 3.3V range
+sound_sensor.atten(ADC.ATTN_11DB) 
 sound_detect = Pin(27, Pin.IN)
 
-# Connect to Wi-Fi
+
 def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -29,7 +29,7 @@ def connect_wifi():
         pass
     print("Connected, IP:", wlan.ifconfig()[0])
 
-# Handle incoming violence alert
+
 def handle_request(conn):
     request = conn.recv(1024)
     if b"/alert" in request:
@@ -44,7 +44,7 @@ def handle_request(conn):
     conn.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nOK")
     conn.close()
 
-# Start a simple HTTP server
+#server to send and receive data from main script
 def start_server():
     addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
     s = socket.socket()
@@ -62,7 +62,7 @@ def monitor_sound():
         sound_value = sound_sensor.read()
         sound_dtc = sound_detect.value()
 
-        # Fixed dictionary format
+
         data = {
             "Sound_Value": sound_value,
             "Sound_detection": sound_dtc
@@ -75,7 +75,7 @@ def monitor_sound():
             except Exception as e:
                 print("Failed to send sound alert:", e)
 
-        # Call the send data function
+   
         send_data_ubidots(data)
         time.sleep(1)
 
@@ -109,7 +109,7 @@ def send_data_ubidots(data):
     except Exception as e:
         print("Error sending data to Ubidots:", e)
 
-# Run everything
+
 connect_wifi()
-_thread.start_new_thread(monitor_sound, ())  # Fixed thread syntax
+_thread.start_new_thread(monitor_sound, ()) 
 start_server()
