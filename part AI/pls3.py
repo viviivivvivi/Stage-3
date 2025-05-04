@@ -9,9 +9,10 @@ import requests
 import threading
 import time
 from datetime import datetime
-from twilio.rest import Client
 import json
 from flask_cors import CORS
+from waitress import serve
+from io import BytesIO
 
 class PersonDetector:
     def __init__(self):
@@ -115,15 +116,9 @@ class AlertService:
     def __init__(self):
         self.last_alert_time = 0
         self.alert_cooldown = 30  
-        self.twilio_enabled = False #still false and may be opened if we get to stage 4 :)
         self.esp32_enabled = True
         self.esp32_ip = "192.168.100.77"
         
-        #Twilio
-        self.twilio_sid = "TWILIO_SSID" #SSID is hidden
-        self.twilio_token = "TOKEN_NAME" #Token is hidden
-        self.twilio_from = "TWILIO_NUMBER" #twilio number is hidden
-        self.twilio_to = "MY_NUMBER" #my number is hidden
  
     def send_alert(self, alert_type, details=""):
         current_time = time.time()
@@ -139,8 +134,6 @@ class AlertService:
         if self.esp32_enabled and alert_type in ["violence", "weapon"]:
             self._send_to_esp32(alert_type)
             
-        if self.twilio_enabled and alert_type in ["violence", "weapon", "high_sound_violence", "high_sound_suspicious"]:
-            self._send_to_twilio(message)
             
         return True
 
@@ -151,13 +144,7 @@ class AlertService:
         except requests.exceptions.RequestException as e:
             print(f"Failed to alert ESP32: {e}")
 
-    def _send_to_twilio(self, message):
-        try:
-            client = Client(self.twilio_sid, self.twilio_token)
-            client.messages.create(body=message, from_=self.twilio_from, to=self.twilio_to)
-            print(f"Twilio message sent: {message}")
-        except Exception as e:
-            print(f"Failed to send Twilio message: {e}")
+
 
 
 class CombinedSystem:
@@ -172,7 +159,7 @@ class CombinedSystem:
         self.ubidots_service = UbidotsService("BBUS-5QUctLYAhVGEfAQxGrSSM9Zciv4g0m")
         self.alert_history = []
         self.latest_frame = None
-        self.cap=cv2.VideoCapture(1)
+        self.cap=cv2.VideoCapture(0)
 
 
         
@@ -207,6 +194,13 @@ class CombinedSystem:
             result_frame, action_label, activities= self.process_frame(frame)  
 
             self.latest_frame = result_frame
+    
+            success, encoded_frame = cv2.imencode('.jpg', self.latest_frame)
+            if success:
+                self.latest_encoded_frame = encoded_frame.tobytes()
+            else:
+                self.latest_encoded_frame = None
+
 
    
 
@@ -384,7 +378,7 @@ class FlaskServer:
             
             return "Received", 200
         
-        @self.app.route('/send_alert')
+        @self.app.route('/send_alert', methods=["GET"])
         def send_alert():
             alert_type = request.args.get('type', 'general')
             message = request.args.get('message', '')
@@ -395,16 +389,17 @@ class FlaskServer:
         def status():
             return jsonify({"status": "ok"}), 200
 
-        @self.app.route('/frame')
+        @self.app.route('/get_frame', methods=["GET"])
         def get_frame():
-            success, encoded_frame = cv2.imencode('.jpg', system.latest_frame)
-            return Response(encoded_frame.tobytes(), mimetype='image/jpeg')
+                return Response(self.system.latest_encoded_frame, mimetype='image/jpeg')
 
-        @self.app.route('/stats')
+        
+
+        @self.app.route('/stats', methods=["GET"])
         def get_stats():
             return jsonify(system.detection_history), 200
 
-        @self.app.route('/alerts')
+        @self.app.route('/alerts', methods=["GET"])
         def get_alerts():
             return jsonify(system.alert_history), 200
     
@@ -412,21 +407,20 @@ class FlaskServer:
         self.current_action_label = action_label
 
     def run(self):
-        threading.Thread(target=lambda: self.app.run(host='0.0.0.0', port=8000, debug=False)).start()
+        self.app.run(host='0.0.0.0', port=4500, debug=False)
+
 
 def main():
     standard_model_path = "yolov8n.pt"
-    custom_model_path = "model1/train/weights/best.pt"
-    lstm_model_path = "models/best_lstm_model.h5"
+    custom_model_path = "best.pt"
+    lstm_model_path = "best_lstm_model.h5"
    
-
-
     system = CombinedSystem(standard_model_path, custom_model_path, lstm_model_path)
     system.start_update_loop()
         
     server = FlaskServer(system)
     server.run()
-    
+
 
 if __name__ == "__main__":
     main()
