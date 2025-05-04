@@ -15,7 +15,7 @@ from pls3 import CombinedSystem, AlertService
 
 
 class SecuritySystemClient:
-    def __init__(self, api_url="http://127.0.0.1:8000"):
+    def __init__(self, api_url= "http://127.0.0.1/4500"):
         self.api_url = api_url
         self.connected = False
         self.detection_history = {
@@ -41,14 +41,11 @@ class SecuritySystemClient:
         if not self.connected:
             return None
 
-        try:
-            response = requests.get(f"{self.api_url}/frame", timeout=1)
-            if response.status_code == 200:
-                img = Image.open(io.BytesIO(response.content))
-                return np.array(img)
-            return None
-        except:
-            return None
+        response = requests.get(f"{self.api_url}/get_frame", timeout=1)
+        if response.status_code==200:
+            img = Image.open(io.BytesIO(response.content))
+            return np.array(img) 
+        return None
 
             
     def get_stats(self):
@@ -107,26 +104,6 @@ class SecuritySystemClient:
             return False
 
 
-def generate_frame():
-
-    frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    
-
-    font = cv2.FONT_HERSHEY_SIMPLEX
-
-    if np.random.random() < 0.05:
-        x1, y1 = np.random.randint(100, 500), np.random.randint(100, 400)
-        w, h = np.random.randint(50, 150), np.random.randint(50, 150)
-        x2, y2 = x1 + w, y1 + h
-        
-        color = (0, 0, 255) if np.random.random() < 0.1 else (0, 255, 0)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-        
-        label = "Person"
-        cv2.putText(frame, label, (x1, y1-10), font, 0.5, color, 2)
-    
-    return frame
-
 
 
 def main():
@@ -151,7 +128,7 @@ def main():
         
         # Connection settings
         st.subheader("Connection")
-        api_url = st.text_input("API URL", "http://127.0.0.1:8000")
+        api_url = st.text_input("API URL", "http://127.0.0.1:4500")
         
         col1= st.columns(1)
         connect_button = st.button("Connect")
@@ -219,8 +196,6 @@ def main():
         # System status indicators
         status_col1, status_col2, status_col3 = st.columns(3)
         with status_col1:
-            # if st.session_state.demo_mode:
-            #     st.info("Demo Mode Active")
             if st.session_state.client.connected:
                 st.success("System Connected")
             else:
@@ -246,7 +221,7 @@ def main():
    
         frame = st.session_state.client.get_frame()
         if frame is None:
-            frame = generate_frame() 
+            st.error("frame not found") 
         stats = st.session_state.client.get_stats()
         alerts = st.session_state.client.get_alerts()
         
